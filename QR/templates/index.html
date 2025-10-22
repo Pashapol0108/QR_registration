@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Регистрация участника</h1>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<form method="post" id="registration-form" novalidate>
+  <div class="mb-3">
+    <label class="form-label">ФИО (полностью)</label>
+    <input type="text" name="fio" class="form-control" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Категория участника</label>
+    <select name="category" class="form-select" id="category-select" required>
+      <option value="Абитуриент">Абитуриент</option>
+      <option value="Студент">Студент</option>
+      <option value="Преподаватель">Преподаватель</option>
+      <option value="Родитель">Родитель</option>
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Телефон</label>
+    <input type="tel" name="phone" id="phone-input" class="form-control"
+       inputmode="numeric" autocomplete="tel" required>
+    <div class="invalid-feedback">Телефон уже зарегистрирован</div>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Email</label>
+    <input type="email" name="email" id="email-input" class="form-control" required>
+    <div class="invalid-feedback">Email уже зарегистрирован</div>
+  </div>
+
+
+  <div class="mb-3" id="consent-container" hidden>
+    <label class="form-check-label">
+      <input type="checkbox" id="consent-checkbox" class="form-check-input">
+      Согласие на обработку данных
+    </label>
+    (<a href="{{ url_for('static', filename='soglasie.docx') }}" target="_blank">файл согласия</a>)
+  </div>
+
+  <button type="submit" class="btn btn-success">Зарегистрироваться</button>
+</form>
+
+{% if qr_path %}
+<hr>
+<h2 class="mb-3">QR-код для отметки</h2>
+<p class="text-muted text-center mb-4">
+    Сделайте скриншот вашего личного QR-кода или скачайте его!<br>
+    Он будет нужен на мероприятии.
+</p>
+
+<div class="d-flex justify-content-center mb-3">
+    <div style="padding:10px; background:white; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.15);">
+        <img src="{{ qr_path }}" alt="QR" style="width:200px; height:200px; display:block;">
+    </div>
+</div>
+
+<div class="text-center mb-4">
+    <a href="{{ qr_path }}" download="my_qr_code.png" class="btn btn-success btn-lg">
+        📥 Скачать QR-код
+    </a>
+</div>
+
+<p class="text-center">Ссылка: <a href="{{ qr_link }}" target="_blank">{{ qr_link }}</a></p>
+{% endif %}
+
+
+<script src="https://unpkg.com/imask"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const categorySelect   = document.getElementById('category-select');
+  const consentContainer = document.getElementById('consent-container');
+  const consentCheckbox  = document.getElementById('consent-checkbox');
+  const form             = document.getElementById('registration-form');
+  const phoneInput       = document.getElementById('phone-input');
+  const emailInput       = document.getElementById('email-input');
+  const fioInput         = form.querySelector('input[name="fio"]');
+
+
+  function toggleConsent() {
+    const isPupil = categorySelect.value === 'Абитуриент';
+    consentContainer.hidden  = isPupil;
+    consentCheckbox.checked  = false;
+    consentCheckbox.required = !isPupil;
+  }
+  toggleConsent();
+  categorySelect.addEventListener('change', toggleConsent);
+
+
+  const phoneMask = IMask(phoneInput, { mask: '+{7}(000)000-00-00', lazy: false });
+
+
+
+  phoneInput.addEventListener('focus', () => {
+    setTimeout(() => {
+
+      if (phoneInput.value.startsWith('+7(') && phoneMask.unmaskedValue.length <= 1) {
+        phoneInput.setSelectionRange(3, 3);
+      } else {
+
+        const firstEmpty = phoneInput.value.indexOf('_');
+        if (firstEmpty !== -1) {
+          phoneInput.setSelecti2onRange(firstEmpty, firstEmpty);
+        }
+      }
+    }, 0);
+  });
+
+  function validatePhone() {
+    const digits = phoneMask.unmaskedValue;
+    if (digits.length === 11) {
+      checkUnique('phone', phoneInput.value, phoneInput);
+    } else {
+      phoneInput.classList.remove('is-valid','is-invalid');
+    }
+  }
+
+  phoneInput.addEventListener('blur', validatePhone);
+  phoneInput.addEventListener('input', () => {
+    const digits = phoneMask.unmaskedValue;
+    if (digits.length === 11) {
+      phoneInput.classList.add('is-valid');
+      phoneInput.classList.remove('is-invalid');
+    } else {
+      phoneInput.classList.remove('is-valid','is-invalid');
+    }
+  });
+
+
+  function validEmail(value) {
+    return /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(value);
+  }
+
+  emailInput.addEventListener('blur', () => {
+    const v = emailInput.value.trim();
+    emailInput.classList.remove('is-valid','is-invalid');
+    if (!v) return;
+
+    if (!validEmail(v)) {
+      emailInput.classList.add('is-invalid');
+      emailInput.nextElementSibling.textContent = 'Неверный формат email';
+      return;
+    }
+
+    emailInput.nextElementSibling.textContent = 'Email уже зарегистрирован';
+    checkUnique('email', v, emailInput);
+  });
+
+
+  function validateFIO() {
+    const v = fioInput.value.trim();
+    if (v.length > 0) {
+      fioInput.classList.add('is-valid');
+      fioInput.classList.remove('is-invalid');
+    } else {
+      fioInput.classList.add('is-invalid');
+      fioInput.classList.remove('is-valid');
+    }
+  }
+  fioInput.addEventListener('input', validateFIO);
+  fioInput.addEventListener('blur', validateFIO);
+
+
+  async function checkUnique(field, rawValue, el) {
+    let value = rawValue.trim();
+    if (field === 'phone') value = phoneMask.unmaskedValue;
+
+    if (!value) return;
+
+    try {
+      const resp = await fetch('{{ url_for("check_unique") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field, value })
+      });
+      const data = await resp.json();
+
+      if (data.exists) {
+        el.classList.add('is-invalid');
+        el.classList.remove('is-valid');
+      } else {
+        el.classList.remove('is-invalid');
+        el.classList.add('is-valid');
+      }
+    } catch(e) { console.error(e); }
+  }
+
+
+  form.addEventListener('submit', e => {
+    validateFIO();
+    if (fioInput.classList.contains('is-invalid')) {
+      e.preventDefault();
+      alert('Поле ФИО не может быть пустым!');
+      fioInput.focus();
+      return;
+    }
+
+    if (categorySelect.value !== 'Ученик' && !consentCheckbox.checked) {
+      e.preventDefault();
+      alert('Необходимо дать согласие на обработку данных!');
+      return;
+    }
+
+    const phoneDigits = phoneMask.unmaskedValue;
+    if (phoneDigits.length !== 11) {
+      e.preventDefault();
+      alert('Введите полный номер телефона!');
+      phoneInput.focus();
+      return;
+    }
+
+    if (phoneInput.classList.contains('is-invalid') || emailInput.classList.contains('is-invalid')) {
+      e.preventDefault();
+      alert('Телефон или Email уже зарегистрированы или введены некорректно!');
+      return;
+    }
+  });
+});
+</script>
+{% endblock %}

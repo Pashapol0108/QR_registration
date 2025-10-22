@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-center align-items-center" style="height: 80vh;">
+  <div class="text-center">
+    <h2 class="mb-4">Введите PIN-код</h2>
+
+    {% if error %}
+      <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+
+    <form method="post">
+      <input type="hidden" name="next" value="{{ next_url }}">
+
+      <div id="pin-dots" class="d-flex justify-content-center mb-4">
+        <span class="dot m-2"></span>
+        <span class="dot m-2"></span>
+        <span class="dot m-2"></span>
+        <span class="dot m-2"></span>
+      </div>
+
+      <input type="password" name="code" id="pin-input" maxlength="4" class="form-control d-none" autofocus>
+
+      <div class="btn-grid d-grid gap-2" style="grid-template-columns: repeat(3, 80px); justify-content: center;">
+        {% for n in range(1, 10) %}
+          <button type="button" class="btn btn-outline-primary fs-3" onclick="press('{{n}}')">{{n}}</button>
+        {% endfor %}
+        <button type="button" class="btn btn-outline-secondary fs-3" onclick="backspace()">←</button>
+        <button type="button" class="btn btn-outline-primary fs-3" onclick="press('0')">0</button>
+        <button type="submit" class="btn btn-success fs-3">OK</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  #pin-dots .dot {
+    width: 18px;
+    height: 18px;
+    background-color: #ccc;
+    border-radius: 50%;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+    transition: background-color 0.2s ease, transform 0.2s ease;
+  }
+  #pin-dots .dot.filled {
+    background-color: #333;
+    transform: scale(1.15);
+  }
+</style>
+
+<script>
+  const input = document.getElementById('pin-input');
+  const dots = document.querySelectorAll('#pin-dots .dot');
+
+  function updateDots() {
+    dots.forEach((dot, i) => {
+      if (i < input.value.length) {
+        dot.classList.add('filled');
+      } else {
+        dot.classList.remove('filled');
+      }
+    });
+  }
+
+  function press(n) {
+    if (input.value.length < 4) {
+      input.value += n;
+      updateDots();
+    }
+  }
+
+  function backspace() {
+    input.value = input.value.slice(0, -1);
+    updateDots();
+  }
+
+  updateDots();
+</script>
+{% endblock %}

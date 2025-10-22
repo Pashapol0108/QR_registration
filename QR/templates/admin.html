@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Админ-панель</h1>
+
+{% if not session.admin %}
+<form method="post">
+  <div class="mb-3">
+    <label>Логин</label>
+    <input type="text" name="login" class="form-control" required>
+  </div>
+  <div class="mb-3">
+    <label>Пароль</label>
+    <input type="password" name="password" class="form-control" required>
+  </div>
+  {% if error %}
+  <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
+  <button type="submit" class="btn btn-success">Войти</button>
+</form>
+{% else %}
+<a href="{{ url_for('export_csv') }}" class="btn btn-success mb-3">Скачать CSV</a>
+<table class="table table-bordered">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>ФИО</th>
+      <th>Категория</th>
+      <th>Телефон</th>
+      <th>Email</th>
+      {% for loc in locations %}
+      <th>{{ loc }}</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in participants %}
+    <tr>
+      <td>{{ p[0] }}</td>
+      <td>{{ p[1] }}</td>
+      <td>{{ p[2] }}</td>
+      <td>{{ p[3] }}</td>
+      <td>{{ p[4] }}</td>
+      {% for loc in locations %}
+      <td>{% if loc in checkins.get(p[0], []) %}✓{% endif %}</td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}
